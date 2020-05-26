@@ -5,7 +5,8 @@ import botocore
 
 def main():
     s3 = boto3.resource('s3')
-    BotoS3(s3).printBuckets()
+    h = BotoS3(s3)
+    print(h.getBucketNames())
     
 
 if __name__ == "__main__":

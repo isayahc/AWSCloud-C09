@@ -28,45 +28,58 @@ class BotoS3:
         '''Prints all existing buckets'''
         for bucket in s3.buckets.all():
             print(bucket)
+
+    def getBucketNames(self):
+        return [i.name for i in s3.buckets.all()]
+
     
-    def getBucket(self,bucketname):
-        bucket = self.s3.Bucket(bucketname)
-        exists = True
-        try:
-            s3.meta.client.head_bucket(Bucket=bucketname)
-        except botocore.exceptions.ClientError as e:
-            # If a client error is thrown, then check that it was a 404 error.
-            # If it was a 404 error, then the bucket does not exist.
-            error_code = e.response['Error']['Code']
-            if error_code == '404':
-                exists = False
-                return "Does not exist boiii"
 
-        return bucket
+class s3Bucket:
+    def __init__(self, s3 : BotoS3 ,bucketname :str ):
+        self.bucketname = bucketname
+        self.s3 = s3
 
-    def storeDataonBucket(self,bucketname, file):
+    def getBucket(self):
+            bucket = self.s3.Bucket(self.bucketname)
+            exists = True
+            try:
+                s3.meta.client.head_bucket(Bucket=bucketname)
+            except botocore.exceptions.ClientError as e:
+                # If a client error is thrown, then check that it was a 404 error.
+                # If it was a 404 error, then the bucket does not exist.
+                error_code = e.response['Error']['Code']
+                if error_code == '404':
+                    exists = False
+                    return "Does not exist boiii"
+
+            return bucket
+
+    def storeDataonBucket(self,file):
         ''' 
         Probably needs some tweaking. Uploads data to the cloud
         '''
-        self.s3.Object(bucketname, file).put(Body=open(file, 'rb'))
-        # try:
-        #     file.close()
+        try:
+            self.s3.Object(bucketname, file).put(Body=open(file, 'rb'))
+        except FileNotFoundError:
+            open(file, 'w')
+            self.s3.Object(bucketname, file).put(Body=open(file, 'rb'))
+        finally:
+            print("I should close the file")
 
-
-    def deleteBucket(self, bucketname):
+    def deleteBucket(self):
         '''Probably needs more adjustments'''
         try:
-            bucket = self.s3.Bucket(bucketname)
+            bucket = self.s3.Bucket(self.bucketname)
             for key in bucket.objects.all():
                 key.delete()
             bucket.delete()
             print("Bucket has been deleted")       
         except botocore.exceptions.ClientError:
-            print(f"{bucketname}This bucket doesn't exist")
+            print(f"{self.bucketname}This bucket doesn't exist")
 
     def downloadData(self, bucket : str,tofilename : str,fromfilename :str):
         try:
-            bucket = getBucket(bucket)
+            bucket = getBucket(self.bucket)
             with open(tofilename, 'wb') as data:
                 bucket.download_fileobj(fromfilename, data)
         except botocore.exceptions.ClientError:
@@ -74,4 +87,8 @@ class BotoS3:
 
     def UploadDate(self, bucket: str, file:str):
         self.s3.Object(bucket, file).put(Body=open(file, 'rb'))
+    
+
+
+
 
