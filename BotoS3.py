@@ -7,7 +7,7 @@ import os
 
 s3 = boto3.resource('s3')
 
-class BotoS3:
+class BotoS3Res:
     """managing stuff"""
     '''must be a resource object'''
     def __init__(self,s3):
@@ -32,10 +32,16 @@ class BotoS3:
     def getBucketNames(self):
         return [i.name for i in s3.buckets.all()]
 
+# class BotoS3Clin:
+#     def __init__(self, s3):
+#         self.s3 = s3
+
+#     def
+
     
 
 class s3Bucket:
-    def __init__(self, s3 : BotoS3 ,bucketname :str ):
+    def __init__(self, s3 : BotoS3Res ,bucketname :str ):
         self.bucketname = bucketname
         self.s3 = s3
 
@@ -59,11 +65,13 @@ class s3Bucket:
         Probably needs some tweaking. Uploads data to the cloud
         '''
         try:
-            self.s3.Object(bucketname, file).put(Body=open(file, 'rb'))
+            self.s3.Object(self.bucketname, file).put(Body=open(file, 'rb'))
         except FileNotFoundError:
+            #probably should not create an empty file just to upload
             open(file, 'w')
-            self.s3.Object(bucketname, file).put(Body=open(file, 'rb'))
+            self.s3.Object(self.bucketname, file).put(Body=open(file, 'rb'))
         finally:
+            os.remove(file)
             print("I should close the file")
 
     def deleteBucket(self):
@@ -77,7 +85,7 @@ class s3Bucket:
         except botocore.exceptions.ClientError:
             print(f"{self.bucketname}This bucket doesn't exist")
 
-    def downloadData(self, bucket : str,tofilename : str,fromfilename :str):
+    def downloadData(self, tofilename : str, fromfilename :str):
         try:
             bucket = getBucket(self.bucket)
             with open(tofilename, 'wb') as data:
@@ -85,10 +93,47 @@ class s3Bucket:
         except botocore.exceptions.ClientError:
             raise Exception("Object does not exist")
 
-    def UploadDate(self, bucket: str, file:str):
-        self.s3.Object(bucket, file).put(Body=open(file, 'rb'))
+    # def UploadDate(self, bucket: str, file:str):
+    #     self.s3.Object(bucket, file).put(Body=open(file, 'rb'))
+
+    def deleteFile(self, file: str):
+        self.s3.Object(self.bucketname, file).delete()
+
+    def getBucketFiles(self):
+        files = s3.Bucket(self.bucketname).Object()
+        return files
+
+###for client
+
+class BotoS3Clin:
+    def __init__(self,bucket, s3 : boto3.client):
+        self.bucket = bucket
+        self.s3 = s3
+
     
+    def get_all_s3_keys(self):
+        """Get a list of all keys in an S3 bucket."""
+        keys = []
 
+        kwargs = {'Bucket': self.bucket}
+        while True:
+            resp = self.s3.list_objects_v2(**kwargs)
+            for obj in resp['Contents']:
+                keys.append(obj['Key'])
 
+            try:
+                kwargs['ContinuationToken'] = resp['NextContinuationToken']
+            except KeyError:
+                break
+
+        return keys
+
+    def get_s3_keys(self):
+        """Get a list of keys in an S3 bucket."""
+        keys = []
+        resp = self.s3.list_objects_v2(Bucket= self.bucket)
+        for obj in resp['Contents']:
+            keys.append(obj['Key'])
+        return keys
 
 
